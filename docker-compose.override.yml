@@ -1,1 +1,1 @@
-services: { api: { ports: [] }, db: { ports: [] }, web: { ports: ["80:80", "443:443"] } }
+services: { api: { ports: [] }, db: { ports: [] }, ui: { ports: ["80:80", "443:443"] } }

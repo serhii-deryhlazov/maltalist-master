@@ -54,7 +54,7 @@ services:
           cpus: '0.3'
           memory: 112M
 
-  web:
+  ui:
     image: nginx:alpine
     ports:
       - "80:80"
