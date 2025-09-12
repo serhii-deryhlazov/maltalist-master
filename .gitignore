@@ -1,0 +1,5 @@
+maltalist-api
+maltalist-ui
+files/*
+.tmp
+.DS_Store

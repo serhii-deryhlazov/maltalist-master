@@ -1,0 +1,78 @@
+services:
+  api:
+    build:
+      context: ./maltalist-api
+      dockerfile: Dockerfile
+    working_dir: /app
+    ports:
+      - "5023:5023"
+      - "7004:7004"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=M@LtApass;
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    volumes:
+      - ./files/images:/images
+
+  db:
+    image: mysql:8.0
+    platform: linux/amd64
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: maltalist
+      MYSQL_USER: maltalist_user
+      MYSQL_PASSWORD: M@LtApass
+    volumes:
+      - ./files/backups:/backups
+      - ./files/backups/backup.sh:/backup.sh
+      - mysql_data:/var/lib/mysql
+      - ./maltalist-api/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: '0.7'
+          memory: 268M
+        reservations:
+          cpus: '0.3'
+          memory: 112M
+
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./maltalist-ui:/usr/share/nginx/html
+      - ./files/images:/usr/share/nginx/html/assets/img/listings
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+volumes:
+  mysql_data:
