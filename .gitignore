@@ -3,3 +3,5 @@ maltalist-ui
 files/*
 .tmp
 .DS_Store
+seeder/bin
+seeder/obj

@@ -14,9 +14,9 @@ def get_db_stats():
             database=os.getenv('DB_NAME', 'maltalist')
         )
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
+        cursor.execute("SELECT COUNT(*) FROM Users")
         users_count = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM listings")
+        cursor.execute("SELECT COUNT(*) FROM Listings")
         listings_count = cursor.fetchone()[0]
         conn.close()
         return users_count, listings_count
