@@ -74,5 +74,29 @@ services:
           cpus: '0.1'
           memory: 64M
 
+  monitor:
+    build:
+      context: ./monitor
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - api
+      - ui
+    environment:
+      - DB_HOST=db
+      - DB_USER=maltalist_user
+      - DB_PASSWORD=M@LtApass
+      - DB_NAME=maltalist
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+
 volumes:
   mysql_data:
