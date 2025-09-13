@@ -10,8 +10,9 @@ service=$1
 
 case $service in
   db|api|ui|monitor)
-    echo "Restarting $service..."
-    docker-compose restart $service
+    echo "Rebuilding and restarting $service..."
+    docker-compose build $service
+    docker-compose up -d --force-recreate $service
     ;;
   *)
     echo "Invalid service: $service"

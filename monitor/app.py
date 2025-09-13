@@ -2,6 +2,7 @@ from flask import Flask
 import mysql.connector
 import requests
 import os
+import subprocess
 
 app = Flask(__name__)
 
@@ -30,12 +31,35 @@ def check_service_health(service_name, url):
     except:
         return False
 
+def get_container_stats():
+    try:
+        result = subprocess.run(['docker', 'stats', '--no-stream', '--format', 'table {{.Container}}\t{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}'], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            if len(lines) > 1:
+                headers = lines[0].split('\t')
+                stats = []
+                for line in lines[1:]:
+                    parts = line.split('\t')
+                    if len(parts) >= len(headers):
+                        stat = dict(zip(headers, parts))
+                        stats.append(stat)
+                return stats
+        return []
+    except Exception as e:
+        return []
+
 @app.route('/')
 def dashboard():
     users_count, listings_count = get_db_stats()
     api_health = check_service_health('API', 'http://api:5023/api/Listings/categories')
     ui_health = check_service_health('UI', 'http://ui/')
     db_health = users_count is not None
+    container_stats = get_container_stats()
+    table_html = '<table style="width:100%; border-collapse: collapse;"><tr><th>Container ID</th><th>Name</th><th>CPU %</th><th>Mem Usage</th><th>Mem %</th><th>Net I/O</th><th>Block I/O</th></tr>'
+    for stat in container_stats:
+        table_html += f'<tr><td>{stat.get("CONTAINER ID", "")}</td><td>{stat.get("NAME", "")}</td><td>{stat.get("CPU %", "")}</td><td>{stat.get("MEM USAGE / LIMIT", "")}</td><td>{stat.get("MEM %", "")}</td><td>{stat.get("NET I/O", "")}</td><td>{stat.get("BLOCK I/O", "")}</td></tr>'
+    table_html += '</table>'
 
     html = f"""
     <!DOCTYPE html>
@@ -50,6 +74,9 @@ def dashboard():
             .stat span {{ font-weight: bold; }}
             .healthy {{ color: green; }}
             .unhealthy {{ color: red; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }}
+            th {{ background-color: #f2f2f2; }}
         </style>
     </head>
     <body>
@@ -77,6 +104,8 @@ def dashboard():
                 <span>UI:</span>
                 <span class="{'healthy' if ui_health else 'unhealthy'}">{ 'Healthy' if ui_health else 'Unhealthy' }</span>
             </div>
+            <h2>Container Stats</h2>
+            {table_html}
         </div>
     </body>
     </html>
