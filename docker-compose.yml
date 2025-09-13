@@ -17,10 +17,10 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M
+          memory: 124M
         reservations:
           cpus: '0.25'
-          memory: 256M
+          memory: 56M
     volumes:
       - ./files/images:/images
 
@@ -48,11 +48,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.7'
-          memory: 268M
+          cpus: '0.5'
+          memory: 300M
         reservations:
           cpus: '0.3'
-          memory: 112M
+          memory: 64M
 
   ui:
     image: nginx:alpine
@@ -68,11 +68,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
-          memory: 128M
+          cpus: '0.05'
+          memory: 32M
         reservations:
-          cpus: '0.1'
-          memory: 64M
+          cpus: '0.025'
+          memory: 10M
 
   monitor:
     build:
@@ -94,11 +94,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.1'
+          cpus: '0.01'
           memory: 64M
         reservations:
-          cpus: '0.05'
-          memory: 32M
+          cpus: '0.005'
+          memory: 16M
 
 volumes:
   mysql_data:

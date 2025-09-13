@@ -1,14 +1,22 @@
-FROM python:3.9-slim
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+COPY go.mod ./
+RUN go mod download
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY main.go ./
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -o monitor main.go
 
-COPY app.py .
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates docker-cli
+
+WORKDIR /root/
+
+COPY --from=builder /app/monitor .
 
 EXPOSE 8080
 
-CMD ["python", "app.py"]
+CMD ["./monitor"]
