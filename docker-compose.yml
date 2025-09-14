@@ -1,29 +1,4 @@
 services:
-  api:
-    build:
-      context: ./maltalist-api
-      dockerfile: Dockerfile
-    working_dir: /app
-    ports:
-      - "5023:5023"
-      - "7004:7004"
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=M@LtApass;
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 124M
-        reservations:
-          cpus: '0.25'
-          memory: 56M
-    volumes:
-      - ./files/images:/images
-
   db:
     image: mysql:8.0
     platform: linux/amd64
@@ -48,11 +23,36 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 300M
+          cpus: '0.2'
+          memory: 250M
         reservations:
-          cpus: '0.3'
+          cpus: '0.1'
           memory: 64M
+  
+  api:
+    build:
+      context: ./maltalist-api
+      dockerfile: Dockerfile
+    working_dir: /app
+    ports:
+      - "5023:5023"
+      - "7004:7004"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=M@LtApass;
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 264M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    volumes:
+      - ./files/images:/images
 
   ui:
     image: nginx:alpine
@@ -68,37 +68,32 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.05'
-          memory: 32M
+          cpus: '0.01'
+          memory: 16M
         reservations:
-          cpus: '0.025'
-          memory: 10M
+          cpus: '0.005'
+          memory: 8M
 
-  monitor:
+  monitoring:
     build:
-      context: ./monitor
+      context: ./monitoring
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
-    depends_on:
-      - db
-      - api
-      - ui
-    environment:
-      - DB_HOST=db
-      - DB_USER=maltalist_user
-      - DB_PASSWORD=M@LtApass
-      - DB_NAME=maltalist
+      - "8080:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - api
+      - db
+      - ui
     deploy:
       resources:
         limits:
-          cpus: '0.01'
-          memory: 64M
+          cpus: '0.05'
+          memory: 128M
         reservations:
-          cpus: '0.005'
-          memory: 16M
+          cpus: '0.02'
+          memory: 64M
 
 volumes:
   mysql_data:
