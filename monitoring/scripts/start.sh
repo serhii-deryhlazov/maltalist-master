@@ -4,5 +4,5 @@ apache2-foreground &
 
 while true; do
   /monitor.sh
-  sleep 60
+  sleep 2
 done

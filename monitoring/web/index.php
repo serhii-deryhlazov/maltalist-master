@@ -5,18 +5,31 @@
     <title>Docker Monitoring</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            width: 100%;
+        }
+        #charts{
+            columns: 2;
+            column-gap: 20px;
+        }
         .chart-container {
             width: 100%;
             overflow-x: scroll;
             margin-bottom: 20px;
+            break-inside: avoid;
         }
         canvas {
-            width: 2000px;
+            width: 100%;
             height: 400px;
         }
     </style>
 </head>
 <body>
+    <h2>Charts Over Time</h2>
+    <div id="charts"></div>
+
     <h1>Docker Container Stats</h1>
     <table border="1">
         <thead>
@@ -31,8 +44,7 @@
         </tbody>
     </table>
 
-    <h2>Charts Over Time</h2>
-    <div id="charts"></div>
+    <a href="db.php">Manage DB</a>
 
     <script>
         async function loadData() {
@@ -121,7 +133,7 @@
                     createCharts(data);
                 }
             });
-        }, 60000);
+        }, 5000);
     </script>
 </body>
 </html>
