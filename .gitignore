@@ -1,5 +1,6 @@
 maltalist-api
 maltalist-ui
+maltalist-angular
 files/*
 .tmp
 .DS_Store
