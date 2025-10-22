@@ -1,6 +1,6 @@
 services:
   db:
-    image: mysql:8.0
+    image: mysql:5.7
     platform: linux/amd64
     command: --default-authentication-plugin=mysql_native_password --innodb-buffer-pool-size=64M --innodb-log-file-size=16M --innodb-log-buffer-size=8M --innodb-ft-total-cache-size=32M --innodb-ft-cache-size=1M --max-connections=20
     restart: always
@@ -30,9 +30,7 @@ services:
           memory: 128M
   
   api:
-    build:
-      context: ./maltalist-api
-      dockerfile: Dockerfile
+    image: maltalist-api:latest
     working_dir: /app
     ports:
       - "5023:5023"
@@ -55,12 +53,10 @@ services:
       - ./files/images:/images
 
   ui:
-    build:
-      context: ./maltalist-angular
-      dockerfile: Dockerfile
+    image: maltalist-ui:latest
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
+      - "8443:443"
     volumes:
       - ./files/images:/usr/share/nginx/html/assets/img/listings
       - ./maltalist-angular/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -76,11 +72,9 @@ services:
           memory: 64M
 
   monitoring:
-    build:
-      context: ./monitoring
-      dockerfile: Dockerfile
+    image: maltalist-monitoring:latest
     ports:
-      - "8080:80"
+      - "8181:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
