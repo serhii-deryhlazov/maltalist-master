@@ -1,0 +1,15 @@
+FROM nginx:alpine
+
+# Copy web files
+COPY web /usr/share/nginx/html
+
+# Copy monitoring scripts
+COPY scripts/monitor.sh /monitor.sh
+COPY scripts/start.sh /start.sh
+
+# Install docker and jq
+RUN apk add --no-cache docker-cli jq bash
+
+RUN chmod +x /monitor.sh /start.sh
+
+CMD ["/start.sh"]

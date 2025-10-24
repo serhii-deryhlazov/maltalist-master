@@ -1,0 +1,13 @@
+FROM alpine:3.18
+
+RUN apk add --no-cache docker-cli jq bash
+
+COPY scripts/monitor.sh /monitor.sh
+COPY scripts/start.sh /start.sh
+
+RUN chmod +x /monitor.sh /start.sh
+
+# Create volume mount point for data
+RUN mkdir -p /data
+
+CMD ["/start.sh"]
