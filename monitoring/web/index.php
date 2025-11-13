@@ -48,7 +48,7 @@
 
     <script>
         async function loadData() {
-            const response = await fetch('stats.json');
+            const response = await fetch('stats/stats.json');
             const data = await response.json();
             return data;
         }
@@ -113,7 +113,8 @@
                     },
                     options: {
                         responsive: false,
-                        maintainAspectRatio: false
+                        maintainAspectRatio: false,
+                        animation: false
                     }
                 });
             });

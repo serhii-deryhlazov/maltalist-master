@@ -1,0 +1,108 @@
+name: Build and Deploy Maltalist API
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'maltalist-api/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'maltalist-api/**'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore maltalist-api/MaltalistApi.csproj
+    
+    - name: Build
+      run: dotnet build maltalist-api/MaltalistApi.csproj --configuration Release --no-restore
+    
+    - name: Run security scan
+      run: |
+        dotnet list maltalist-api/MaltalistApi.csproj package --vulnerable --include-transitive
+    
+    # Uncomment when you have tests
+    # - name: Run tests
+    #   run: dotnet test maltalist-api/MaltalistApi.csproj --no-restore --verbosity normal
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: 'maltalist-api'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./maltalist-api
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/maltalist-api:latest
+          ${{ secrets.DOCKER_USERNAME }}/maltalist-api:${{ github.sha }}
+        cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/maltalist-api:buildcache
+        cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/maltalist-api:buildcache,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          cd /path/to/your/app
+          docker-compose pull api
+          docker-compose up -d api
+          docker image prune -f
