@@ -6,3 +6,32 @@ files/*
 .DS_Store
 seeder/bin
 seeder/obj
+
+# Security & Sensitive Files
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+deploy/ssl/*
+!deploy/ssl/.gitkeep
+
+# Database & Backups
+*.sql
+*.dump
+files/backups/*.sql
+
+# Logs & Stats
+*.log
+files/stats/*.json
+!files/stats/.gitkeep
+
+# IDE & System
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

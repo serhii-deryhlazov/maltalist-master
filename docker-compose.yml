@@ -4,13 +4,11 @@ services:
     platform: linux/amd64
     command: --default-authentication-plugin=mysql_native_password --innodb-buffer-pool-size=64M --innodb-log-file-size=16M --innodb-log-buffer-size=8M --innodb-ft-total-cache-size=32M --innodb-ft-cache-size=1M --max-connections=20
     restart: always
-    ports:
-      - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Complex_Root_Pass_2025!}
       MYSQL_DATABASE: maltalist
       MYSQL_USER: maltalist_user
-      MYSQL_PASSWORD: M@LtApass
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-M@LtApass_Secure_2025!}
     volumes:
       - ./files/backups:/backups
       - ./files/backups/backup.sh:/backup.sh
@@ -42,7 +40,7 @@ services:
         condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=M@LtApass;
+      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=${MYSQL_PASSWORD:-M@LtApass_Secure_2025!};
     deploy:
       resources:
         limits:
@@ -81,6 +79,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    environment:
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-M@LtApass_Secure_2025!}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./files/stats:/var/www/html/stats
