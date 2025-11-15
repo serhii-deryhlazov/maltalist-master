@@ -52,13 +52,30 @@
     $totalListings = $result->fetch_assoc()['total'];
 
     // Listings added today
-    $sql = "SELECT id, title FROM Listings WHERE DATE(createdAt) = CURDATE()";
+    $sql = "SELECT id, title, Approved FROM Listings WHERE DATE(createdAt) = CURDATE()";
     $result = $conn->query($sql);
     $listingsToday = [];
     if ($result->num_rows > 0) {
         while($row = $result->fetch_assoc()) {
             $listingsToday[] = $row;
         }
+    }
+
+    // Handle approve action
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve_listing'])) {
+        $listingId = intval($_POST['listing_id']);
+        $approvedValue = isset($_POST['approved']) ? 1 : 0;
+        
+        $conn = new mysqli($servername, $username, $password, $dbname);
+        $stmt = $conn->prepare("UPDATE Listings SET Approved = ? WHERE id = ?");
+        $stmt->bind_param("ii", $approvedValue, $listingId);
+        $stmt->execute();
+        $stmt->close();
+        $conn->close();
+        
+        // Redirect to refresh the page
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
     }
 
     $conn->close();
@@ -74,6 +91,7 @@
                 <tr>
                     <th>Title</th>
                     <th>Link</th>
+                    <th>Approved</th>
                 </tr>
             </thead>
             <tbody>
@@ -81,6 +99,17 @@
                     <tr>
                         <td><?php echo htmlspecialchars($listing['title']); ?></td>
                         <td><a href="http://localhost/listing/<?php echo $listing['id']; ?>" target="_blank">View Listing</a></td>
+                        <td>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="listing_id" value="<?php echo $listing['id']; ?>">
+                                <input type="hidden" name="approve_listing" value="1">
+                                <input type="checkbox" 
+                                       name="approved" 
+                                       value="1" 
+                                       <?php echo $listing['Approved'] ? 'checked' : ''; ?>
+                                       onchange="this.form.submit()">
+                            </form>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
