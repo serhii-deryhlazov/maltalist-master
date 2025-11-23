@@ -1,3 +1,16 @@
+<?php
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'prune') {
+    header('Content-Type: application/json');
+    $file = 'stats/stats.json';
+    if (file_put_contents($file, '[]') !== false) {
+        echo json_encode(['success' => true, 'message' => 'Stats pruned successfully']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to prune stats']);
+    }
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -27,7 +40,10 @@
     </style>
 </head>
 <body>
-    <h2>Charts Over Time</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Charts Over Time</h2>
+        <button onclick="pruneStats()" style="background-color: #ff4444; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 4px;">Prune Stats</button>
+    </div>
     <div id="charts"></div>
 
     <h1>Docker Container Stats</h1>
@@ -47,6 +63,32 @@
     <a href="db.php">Manage DB</a>
 
     <script>
+        async function pruneStats() {
+            if (!confirm('Are you sure you want to delete all stats history?')) return;
+            
+            try {
+                const response = await fetch('?action=prune', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Clear UI
+                    document.getElementById('stats-table').innerHTML = '';
+                    document.getElementById('charts').innerHTML = '';
+                    // Reload data
+                    const data = await loadData();
+                    if (data.length > 0) {
+                        updateTable(data[data.length - 1]);
+                        createCharts(data);
+                    }
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (e) {
+                alert('Error pruning stats');
+                console.error(e);
+            }
+        }
+
         async function loadData() {
             const response = await fetch('stats/stats.json');
             const data = await response.json();
