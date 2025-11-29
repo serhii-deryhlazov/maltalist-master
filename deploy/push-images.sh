@@ -49,9 +49,9 @@ scp setup-nginx.sh $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
 echo "Setting up SSL certificates on server..."
 ssh $SERVER_USER@$SERVER_IP "mkdir -p /etc/ssl/maltalisting.com"
 echo "Uploading SSL certificate..."
-scp ssl/certificate.crt $SERVER_USER@$SERVER_IP:/etc/ssl/maltalisting.com/certificate.crt
+scp ssl/maltalisting.com/certificate.crt $SERVER_USER@$SERVER_IP:/etc/ssl/maltalisting.com/certificate.crt
 echo "Uploading SSL private key..."
-scp ssl/private.key $SERVER_USER@$SERVER_IP:/etc/ssl/maltalisting.com/private.key
+scp ssl/maltalisting.com/private.key $SERVER_USER@$SERVER_IP:/etc/ssl/maltalisting.com/private.key
 
 # Set proper permissions for SSL certificates
 echo "Setting SSL certificate permissions..."

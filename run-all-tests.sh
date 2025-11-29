@@ -17,7 +17,7 @@ TOTAL_FAILED=0
 TOTAL_PASSED=0
 
 # Run Angular UI tests
-echo -e "${BLUE}[1/2] Running Angular UI Tests...${NC}"
+echo -e "${BLUE}[1/3] Running Angular UI Tests...${NC}"
 echo ""
 cd maltalist-angular
 if ./run-ui-tests.sh; then
@@ -30,8 +30,20 @@ else
 fi
 cd ..
 
+# Run E2E tests
+echo -e "${BLUE}[2/3] Running E2E Tests...${NC}"
+echo ""
+if ./run-e2e.sh; then
+    echo -e "${GREEN}[SUCCESS] E2E tests passed! ✅${NC}"
+    echo ""
+else
+    echo -e "${RED}[ERROR] E2E tests failed! ❌${NC}"
+    echo ""
+    TOTAL_FAILED=$((TOTAL_FAILED + 1))
+fi
+
 # Run .NET API tests
-echo -e "${BLUE}[2/2] Running .NET API Tests...${NC}"
+echo -e "${BLUE}[3/3] Running .NET API Tests...${NC}"
 echo ""
 cd maltalist-api
 if ./run-api-tests.sh; then
