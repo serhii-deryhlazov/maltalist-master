@@ -33,7 +33,7 @@ cd ..
 # Run E2E tests
 echo -e "${BLUE}[2/3] Running E2E Tests...${NC}"
 echo ""
-if ./run-e2e.sh; then
+if ./run-e2e-tests.sh; then
     echo -e "${GREEN}[SUCCESS] E2E tests passed! ✅${NC}"
     echo ""
 else
