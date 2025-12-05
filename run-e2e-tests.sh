@@ -53,15 +53,19 @@ else
 fi
 
 echo ""
-echo "📝 Ensuring E2E test user exists in database..."
+echo "📝 Ensuring E2E test users exist in database..."
 docker exec ml-db-1 mysql -umaltalist_user -p'M@LtApass_Secure_2025!' maltalist -e \
   "INSERT INTO Users (Id, UserName, Email, UserPicture, PhoneNumber, CreatedAt, LastOnline, ConsentTimestamp, IsActive) \
   VALUES ('e2e-test-user-1', 'Test User One', 'testuser1@maltalist.test', \
-  '/assets/img/users/test-user-1.jpg', '+356 2123 4567', NOW(), NOW(), NOW(), TRUE) \
-  ON DUPLICATE KEY UPDATE UserName='Test User One', IsActive=TRUE;" 2>/dev/null || {
-    echo "⚠️  Warning: Could not ensure test user (database may not be ready)"
+  '/assets/img/users/test-user-1.jpg', '+356 2123 4567', NOW(), NOW(), NOW(), TRUE), \
+  ('e2e-test-user-2', 'Test User Two', 'testuser2@maltalist.test', \
+  '/assets/img/users/test-user-2.jpg', '+356 2123 4568', NOW(), NOW(), NOW(), TRUE), \
+  ('e2e-test-seller', 'Test Seller', 'seller@maltalist.test', \
+  NULL, '+356 9999 8888', NOW(), NOW(), NOW(), TRUE) \
+  ON DUPLICATE KEY UPDATE IsActive=TRUE;" 2>/dev/null || {
+    echo "⚠️  Warning: Could not ensure test users (database may not be ready)"
   }
-echo "✅ Test user ready"
+echo "✅ Test users ready"
 
 echo ""
 echo "🧪 Running Playwright E2E tests..."
@@ -70,15 +74,33 @@ echo ""
 # Navigate to Angular directory and run tests
 cd maltalist-angular
 
-# Run tests and capture exit code
-if npm run test:e2e; then
-  TEST_EXIT_CODE=0
+# Run tests and capture output (disable exit-on-error temporarily)
+set +e
+TEST_OUTPUT=$(npm run test:e2e 2>&1)
+TEST_EXIT_CODE=$?
+set -e
+
+# Display the output
+echo "$TEST_OUTPUT"
+
+# Extract and display failed tests summary
+if [ $TEST_EXIT_CODE -ne 0 ]; then
   echo ""
-  echo "✅ All E2E tests completed!"
-else
-  TEST_EXIT_CODE=$?
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ FAILED TESTS SUMMARY"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  
+  # Extract failed test list from output
+  echo "$TEST_OUTPUT" | grep -A 1000 "failed$" | grep "^\s*\[" | sort -u || echo "  (Could not parse failed tests list)"
+  
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "❌ Some E2E tests failed (exit code: $TEST_EXIT_CODE)"
+else
+  echo ""
+  echo "✅ All E2E tests passed!"
 fi
 
 # Return to project root
