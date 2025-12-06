@@ -53,21 +53,6 @@ else
 fi
 
 echo ""
-echo "📝 Ensuring E2E test users exist in database..."
-docker exec ml-db-1 mysql -umaltalist_user -p'M@LtApass_Secure_2025!' maltalist -e \
-  "INSERT INTO Users (Id, UserName, Email, UserPicture, PhoneNumber, CreatedAt, LastOnline, ConsentTimestamp, IsActive) \
-  VALUES ('e2e-test-user-1', 'Test User One', 'testuser1@maltalist.test', \
-  '/assets/img/users/test-user-1.jpg', '+356 2123 4567', NOW(), NOW(), NOW(), TRUE), \
-  ('e2e-test-user-2', 'Test User Two', 'testuser2@maltalist.test', \
-  '/assets/img/users/test-user-2.jpg', '+356 2123 4568', NOW(), NOW(), NOW(), TRUE), \
-  ('e2e-test-seller', 'Test Seller', 'seller@maltalist.test', \
-  NULL, '+356 9999 8888', NOW(), NOW(), NOW(), TRUE) \
-  ON DUPLICATE KEY UPDATE IsActive=TRUE;" 2>/dev/null || {
-    echo "⚠️  Warning: Could not ensure test users (database may not be ready)"
-  }
-echo "✅ Test users ready"
-
-echo ""
 echo "🧪 Running Playwright E2E tests..."
 echo ""
 

@@ -1,154 +1,164 @@
 #!/bin/bash
 
-# setup-nginx.sh - Configure nginx for maltalisting.com domain
+# Deployment script - builds and uploads selected services to production server
+# Usage: ./deploy.sh --api --ui --monitoring
+#        ./deploy.sh --all
 
-set -e
+SERVER_IP="162.0.222.102"
+SERVER_USER="root"
+DOCKER_PATH="/var/www/docker"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Parse flags
+DEPLOY_API=false
+DEPLOY_UI=false
+DEPLOY_MONITORING=false
 
-# Configuration variables
-DOMAIN="maltalisting.com"
-NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
-NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
-UI_PORT="8080"
-API_PORT="5023"
+show_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --api          Deploy API service"
+    echo "  --ui           Deploy UI service"
+    echo "  --monitoring   Deploy monitoring service"
+    echo "  --all          Deploy all services"
+    echo "  -h, --help     Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0 --api                    # Deploy only API"
+    echo "  $0 --api --ui               # Deploy API and UI"
+    echo "  $0 --all                    # Deploy everything"
+}
 
-echo -e "${GREEN}Setting up nginx configuration for ${DOMAIN}${NC}"
-
-# Check if nginx is installed
-if ! command -v nginx &> /dev/null; then
-    echo -e "${RED}Error: nginx is not installed${NC}"
+if [ $# -eq 0 ]; then
+    show_usage
     exit 1
 fi
 
-# Create the nginx configuration file
-echo -e "${YELLOW}Creating nginx configuration for ${DOMAIN}${NC}"
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --api)
+            DEPLOY_API=true
+            shift
+            ;;
+        --ui)
+            DEPLOY_UI=true
+            shift
+            ;;
+        --monitoring)
+            DEPLOY_MONITORING=true
+            shift
+            ;;
+        --all)
+            DEPLOY_API=true
+            DEPLOY_UI=true
+            DEPLOY_MONITORING=true
+            shift
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+done
 
-cat > "${NGINX_SITES_AVAILABLE}/${DOMAIN}" << 'EOF'
-server {
-    listen 80;
-    server_name maltalisting.com www.maltalisting.com;
+# Build flags to pass to run-prod.sh
+RUN_PROD_FLAGS=""
+if [ "$DEPLOY_API" = true ]; then RUN_PROD_FLAGS="$RUN_PROD_FLAGS --api"; fi
+if [ "$DEPLOY_UI" = true ]; then RUN_PROD_FLAGS="$RUN_PROD_FLAGS --ui"; fi
+if [ "$DEPLOY_MONITORING" = true ]; then RUN_PROD_FLAGS="$RUN_PROD_FLAGS --monitoring"; fi
 
-    # Redirect HTTP to HTTPS
-    return 301 https://$server_name$request_uri;
-}
+echo "=== Deployment Configuration ==="
+echo "API: $DEPLOY_API"
+echo "UI: $DEPLOY_UI"
+echo "Monitoring: $DEPLOY_MONITORING"
+echo "================================"
 
-server {
-    listen 443 ssl http2;
-    server_name maltalisting.com www.maltalisting.com;
+# Go to project root
+cd "$(dirname "$0")/.."
 
-    # SSL configuration (update paths as needed)
-    ssl_certificate /etc/ssl/maltalisting.com/certificate.crt;
-    ssl_certificate_key /etc/ssl/maltalisting.com/private.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA384;
-    ssl_prefer_server_ciphers off;
+# Build selected services for linux/amd64 platform
+echo ""
+echo "Building services for linux/amd64 platform..."
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-          add_header X-Frame-Options "SAMEORIGIN" always;
-          add_header X-Content-Type-Options "nosniff" always;
-          add_header X-XSS-Protection "1; mode=block" always;
-          add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-          add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+SERVICES_TO_BUILD=""
+if [ "$DEPLOY_API" = true ]; then SERVICES_TO_BUILD="$SERVICES_TO_BUILD api"; fi
+if [ "$DEPLOY_UI" = true ]; then SERVICES_TO_BUILD="$SERVICES_TO_BUILD ui"; fi
+if [ "$DEPLOY_MONITORING" = true ]; then SERVICES_TO_BUILD="$SERVICES_TO_BUILD monitoring"; fi
 
-    # Proxy to UI container
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
+docker-compose build $SERVICES_TO_BUILD
 
-    # Proxy API requests to the API container
-    location /api/ {
-        proxy_pass http://localhost:5023/api/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection keep-alive;
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Static files caching
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Enable gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private auth;
-    gzip_types
-        text/plain
-        text/css
-        text/xml
-        text/javascript
-        application/x-javascript
-        application/xml+rss
-        application/javascript
-        application/json;
-}
-EOF
-
-echo -e "${GREEN}Configuration file created at ${NGINX_SITES_AVAILABLE}/${DOMAIN}${NC}"
-
-# Create symbolic link to enable the site
-echo -e "${YELLOW}Enabling the site...${NC}"
-if [ ! -f "${NGINX_SITES_ENABLED}/${DOMAIN}" ]; then
-    ln -s "${NGINX_SITES_AVAILABLE}/${DOMAIN}" "${NGINX_SITES_ENABLED}/${DOMAIN}"
-    echo -e "${GREEN}Site enabled successfully${NC}"
-else
-    echo -e "${YELLOW}Site is already enabled${NC}"
+# Get image names and save to tar files
+if [ "$DEPLOY_API" = true ]; then
+    echo "Saving maltalist-api image..."
+    API_IMAGE=$(docker images --format "{{.Repository}}" | grep api | head -1)
+    docker tag $API_IMAGE maltalist-api:latest
+    docker save maltalist-api:latest > maltalist-api.tar
 fi
 
-# Test nginx configuration
-echo -e "${YELLOW}Testing nginx configuration...${NC}"
-if nginx -t; then
-    echo -e "${GREEN}Nginx configuration test passed${NC}"
-    
-    # Reload nginx
-    echo -e "${YELLOW}Reloading nginx...${NC}"
-    systemctl reload nginx
-    echo -e "${GREEN}Nginx reloaded successfully${NC}"
-    
-    echo -e "${GREEN}Setup completed successfully!${NC}"
-    echo -e "${YELLOW}Your site should now be accessible at:${NC}"
-    echo -e "  - http://${DOMAIN} (redirects to HTTPS)"
-    echo -e "  - https://${DOMAIN}"
-    echo -e ""
-    echo -e "${YELLOW}Note: Make sure your SSL certificates are properly configured at:${NC}"
-    echo -e "  - /etc/ssl/certs/maltalisting.com.crt"
-    echo -e "  - /etc/ssl/private/maltalisting.com.key"
-    echo -e ""
-    echo -e "${YELLOW}Also ensure your Docker containers are running:${NC}"
-    echo -e "  - UI container on port ${UI_PORT}"
-    echo -e "  - API container on port ${API_PORT}"
-else
-    echo -e "${RED}Nginx configuration test failed${NC}"
-    echo -e "${RED}Please check the configuration and try again${NC}"
-    exit 1
+if [ "$DEPLOY_UI" = true ]; then
+    echo "Saving maltalist-ui image..."
+    UI_IMAGE=$(docker images --format "{{.Repository}}" | grep ui | head -1)
+    docker tag $UI_IMAGE maltalist-ui:latest
+    docker save maltalist-ui:latest > maltalist-ui.tar
 fi
+
+if [ "$DEPLOY_MONITORING" = true ]; then
+    echo "Saving maltalist-monitoring image..."
+    MONITORING_IMAGE=$(docker images --format "{{.Repository}}" | grep monitoring | head -1)
+    docker tag $MONITORING_IMAGE maltalist-monitoring:latest
+    docker save maltalist-monitoring:latest > maltalist-monitoring.tar
+fi
+
+# Create directories on server
+echo ""
+echo "Ensuring directories exist on server..."
+ssh $SERVER_USER@$SERVER_IP "mkdir -p $DOCKER_PATH $DOCKER_PATH/files/backups $DOCKER_PATH/files/images $DOCKER_PATH/maltalist-api $DOCKER_PATH/maltalist-angular"
+
+# Transfer tar files
+echo ""
+echo "Transferring images to server..."
+if [ "$DEPLOY_API" = true ]; then
+    echo "Uploading maltalist-api.tar..."
+    scp maltalist-api.tar $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+fi
+
+if [ "$DEPLOY_UI" = true ]; then
+    echo "Uploading maltalist-ui.tar..."
+    scp maltalist-ui.tar $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+fi
+
+if [ "$DEPLOY_MONITORING" = true ]; then
+    echo "Uploading maltalist-monitoring.tar..."
+    scp maltalist-monitoring.tar $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+fi
+
+# Transfer config files
+echo ""
+echo "Transferring config files..."
+scp docker-compose.prod.yml $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+scp deploy/run-prod.sh $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+ssh $SERVER_USER@$SERVER_IP "chmod +x $DOCKER_PATH/run-prod.sh"
+
+# Transfer supporting files
+scp files/backups/backup.sh $SERVER_USER@$SERVER_IP:$DOCKER_PATH/files/backups/
+scp maltalist-api/init-db.sh $SERVER_USER@$SERVER_IP:$DOCKER_PATH/maltalist-api/
+scp maltalist-angular/nginx.conf $SERVER_USER@$SERVER_IP:$DOCKER_PATH/maltalist-angular/
+
+# Clean up local tar files
+echo ""
+echo "Cleaning up local tar files..."
+rm -f maltalist-api.tar maltalist-ui.tar maltalist-monitoring.tar
+
+# Run deployment on server
+echo ""
+echo "Running deployment on server..."
+ssh $SERVER_USER@$SERVER_IP "cd $DOCKER_PATH && ./run-prod.sh $RUN_PROD_FLAGS"
+
+echo ""
+echo "=== Deployment completed! ==="
