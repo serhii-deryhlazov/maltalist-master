@@ -3,6 +3,7 @@ maltalist-ui
 maltalist-angular
 files/*
 .tmp
+.old
 .DS_Store
 seeder/bin
 seeder/obj

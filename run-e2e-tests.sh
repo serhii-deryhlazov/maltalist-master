@@ -91,6 +91,12 @@ fi
 # Return to project root
 cd ..
 
+# Clean up test data created during E2E tests
+echo ""
+echo "🧹 Cleaning up test data..."
+docker exec ml-db-1 mysql -u root -p'Complex_Root_Pass_2025!' maltalist -e "DELETE FROM Listings WHERE UserId LIKE 'e2e-%';" 2>/dev/null || echo "  (Could not clean up test listings)"
+echo "✅ Test data cleaned up"
+
 # Cleanup only if we started the containers
 if [ "$CONTAINERS_WERE_RUNNING" = false ]; then
   echo ""
