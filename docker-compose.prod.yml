@@ -11,6 +11,7 @@ services:
       MYSQL_DATABASE: maltalist
       MYSQL_USER: maltalist_user
       MYSQL_PASSWORD: M@LtApass
+      ENVIRONMENT: production
     volumes:
       - ./files/backups:/backups
       - ./files/backups/backup.sh:/backup.sh
@@ -58,7 +59,8 @@ services:
       - "8080:80"
       - "8443:443"
     volumes:
-      - ./files/images:/usr/share/nginx/html/assets/img/listings
+      - ./files/images/listings:/usr/share/nginx/html/assets/img/listings
+      - ./files/images/users:/usr/share/nginx/html/assets/img/users
       - ./maltalist-angular/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api

@@ -94,6 +94,9 @@ echo "Restarting services..."
 if [ "$DEPLOY_API" = true ]; then
     echo "Restarting API service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate api
+    
+    echo "Initializing database..."
+    docker-compose -f docker-compose.prod.yml exec -T db /docker-entrypoint-initdb.d/init-db.sh --prod
 fi
 
 if [ "$DEPLOY_UI" = true ]; then
