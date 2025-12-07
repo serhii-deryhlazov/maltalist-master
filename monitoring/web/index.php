@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                     createCharts(data);
                 }
             });
-        }, 5000);
+        }, 120000);
     </script>
 </body>
 </html>
