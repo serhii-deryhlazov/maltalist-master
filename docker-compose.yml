@@ -41,7 +41,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=${MYSQL_PASSWORD:-M@LtApass_Secure_2025!};
     deploy:
       resources:

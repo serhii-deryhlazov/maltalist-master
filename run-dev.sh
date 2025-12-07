@@ -14,6 +14,8 @@ cleanup
 echo "override: removing extra ports..."
 echo "services: { api: { ports: [] }, db: { ports: [] }, ui: { ports: [\"80:80\", \"443:443\"] } }" > docker-compose.override.yml
 echo "starting stack..."
-docker-compose up --build
+docker-compose up --build -d
 
-cleanup
+echo "Stack started. Press Ctrl+C to stop and cleanup."
+trap "cleanup; exit" INT
+tail -f /dev/null

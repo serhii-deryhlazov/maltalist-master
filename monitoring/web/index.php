@@ -42,7 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 <body>
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h2>Charts Over Time</h2>
-        <button onclick="pruneStats()" style="background-color: #ff4444; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 4px;">Prune Stats</button>
+        <div>
+            <select id="limit-select" onchange="refreshCharts()" style="padding: 8px; margin-right: 10px; border-radius: 4px;">
+                <option value="10">Last 10</option>
+                <option value="20" selected>Last 20</option>
+                <option value="50">Last 50</option>
+                <option value="100">Last 100</option>
+                <option value="200">Last 200</option>
+                <option value="0">All</option>
+            </select>
+            <button onclick="pruneStats()" style="background-color: #ff4444; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 4px;">Prune Stats</button>
+        </div>
     </div>
     <div id="charts"></div>
 
@@ -63,6 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     <a href="db.php">Manage DB</a>
 
     <script>
+        let currentData = [];
+
         async function pruneStats() {
             if (!confirm('Are you sure you want to delete all stats history?')) return;
             
@@ -76,9 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
                     document.getElementById('charts').innerHTML = '';
                     // Reload data
                     const data = await loadData();
+                    currentData = data;
                     if (data.length > 0) {
                         updateTable(data[data.length - 1]);
-                        createCharts(data);
+                        refreshCharts();
                     }
                 } else {
                     alert('Error: ' + result.message);
@@ -162,21 +175,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             });
         }
 
+        function refreshCharts() {
+            const limit = parseInt(document.getElementById('limit-select').value);
+            let data = currentData;
+            if (limit > 0 && data.length > limit) {
+                data = data.slice(-limit);
+            }
+            createCharts(data);
+        }
+
         loadData().then(data => {
+            currentData = data;
             if (data.length > 0) {
                 updateTable(data[data.length - 1]);
-                createCharts(data);
+                refreshCharts();
             }
         });
 
         setInterval(() => {
             loadData().then(data => {
+                currentData = data;
                 if (data.length > 0) {
                     updateTable(data[data.length - 1]);
-                    createCharts(data);
+                    refreshCharts();
                 }
             });
-        }, 120000);
+        }, 60000);
     </script>
 </body>
 </html>
