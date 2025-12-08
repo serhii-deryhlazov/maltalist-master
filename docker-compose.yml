@@ -2,7 +2,7 @@ services:
   db:
     image: mysql:8.0
     platform: linux/amd64
-    command: --default-authentication-plugin=mysql_native_password --innodb-buffer-pool-size=64M --innodb-log-file-size=16M --innodb-log-buffer-size=8M --innodb-ft-total-cache-size=32M --innodb-ft-cache-size=1M --max-connections=100
+    command: --default-authentication-plugin=mysql_native_password --innodb-buffer-pool-size=128M --innodb-log-file-size=32M --innodb-log-buffer-size=16M --innodb-ft-total-cache-size=64M --innodb-ft-cache-size=2M --max-connections=200 --max-allowed-packet=64M
     restart: always
     ports:
       - "3306:3306"
@@ -23,11 +23,11 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
           cpus: '0.5'
           memory: 512M
-        reservations:
-          cpus: '0.2'
-          memory: 256M
   
   api:
     build:
