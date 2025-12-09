@@ -94,7 +94,24 @@ cd ..
 # Clean up test data created during E2E tests
 echo ""
 echo "🧹 Cleaning up test data..."
+
+# Get list of test listing IDs before deletion
+TEST_LISTING_IDS=$(docker exec ml-db-1 mysql -u root -p'Complex_Root_Pass_2025!' maltalist -N -e "SELECT Id FROM Listings WHERE UserId LIKE 'e2e-%';" 2>/dev/null || true)
+
+# Delete listings from database
 docker exec ml-db-1 mysql -u root -p'Complex_Root_Pass_2025!' maltalist -e "DELETE FROM Listings WHERE UserId LIKE 'e2e-%';" 2>/dev/null || echo "  (Could not clean up test listings)"
+
+# Remove test image folders
+if [ -d "./files/images/listings" ]; then
+  for listing_id in $TEST_LISTING_IDS; do
+    if [ -d "./files/images/listings/$listing_id" ]; then
+      rm -rf "./files/images/listings/$listing_id"
+      echo "  ✓ Removed image folder for listing $listing_id"
+    fi
+  done
+  echo "✅ Test listing image folders cleaned up"
+fi
+
 echo "✅ Test data cleaned up"
 
 # Cleanup only if we started the containers

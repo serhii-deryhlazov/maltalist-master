@@ -87,10 +87,13 @@
     <h1>Database Stats</h1>
     <a href="index.php">Back to Monitoring</a>
 
-    <?php
+    <?php    
     $servername = "db";
     $username = "maltalist_user";
-    $password = getenv('MYSQL_PASSWORD') ?: "M@LtApass";
+    $password = getenv('MYSQL_PASSWORD');
+    if (!$password) {
+        die("Error: MYSQL_PASSWORD environment variable not set");
+    }
     $dbname = "maltalist";
 
     // Create connection

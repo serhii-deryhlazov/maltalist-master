@@ -82,9 +82,12 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      - api
-      - db
-      - ui
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+      ui:
+        condition: service_started
     deploy:
       resources:
         limits:

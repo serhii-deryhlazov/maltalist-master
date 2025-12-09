@@ -1,13 +1,24 @@
 #!/bin/bash
 
-# Start PHP-FPM in background
+# Initialize stats.json if it doesn't exist
+if [ ! -f /var/www/html/stats/stats.json ]; then
+    echo '[]' > /var/www/html/stats/stats.json
+fi
+
+# Ensure proper permissions
+chmod 777 /var/www/html/stats/stats.json
+
+# Export environment variables for PHP-FPM
+export MYSQL_PASSWORD
+
+# Start PHP-FPM in background with environment variables
 php-fpm81 -D
 
-# Start nginx in background
-nginx -g 'daemon off;' &
-
-# Start monitoring loop
-while true; do
+# Start monitoring loop in background
+(while true; do
   /monitor.sh
   sleep 2
-done
+done) &
+
+# Start nginx in foreground (this keeps the container running)
+nginx -g 'daemon off;'

@@ -78,11 +78,33 @@ elif [ "$MODULE" = "db" ]; then
     
     # Wait for DB to be ready
     echo "Waiting for database to be ready..."
-    sleep 5
+    max_attempts=30
+    attempt=0
+    while [ $attempt -lt $max_attempts ]; do
+        if docker-compose -f docker-compose.prod.yml exec -T db mysqladmin ping -u root -proot >/dev/null 2>&1; then
+            echo "✓ Database is ready!"
+            break
+        fi
+        attempt=$((attempt + 1))
+        echo "  Waiting for database... ($attempt/$max_attempts)"
+        sleep 2
+    done
+    
+    if [ $attempt -eq $max_attempts ]; then
+        echo "❌ Error: Database failed to start properly"
+        docker-compose -f docker-compose.prod.yml logs --tail=50 db
+        exit 1
+    fi
     
     # Initialize database schema
     echo "Initializing database schema..."
-    docker-compose -f docker-compose.prod.yml exec -T db bash /docker-entrypoint-initdb.d/init-db.sh --prod
+    if docker-compose -f docker-compose.prod.yml exec -T db bash /docker-entrypoint-initdb.d/init-db.sh --prod; then
+        echo "✓ Database schema initialized successfully"
+    else
+        echo "❌ Error: Database initialization failed"
+        docker-compose -f docker-compose.prod.yml logs --tail=50 db
+        exit 1
+    fi
     
     # Find and restore latest backup
     echo ""
@@ -92,8 +114,11 @@ elif [ "$MODULE" = "db" ]; then
     if [ -n "$LATEST_BACKUP" ] && [ -f "$LATEST_BACKUP" ]; then
         echo "Found backup: $(basename $LATEST_BACKUP)"
         echo "Restoring database from backup..."
-        docker-compose -f docker-compose.prod.yml exec -T db mysql -u root -p${MYSQL_ROOT_PASSWORD} maltalist < "$LATEST_BACKUP"
-        echo "✓ Backup restored successfully"
+        if docker-compose -f docker-compose.prod.yml exec -T db mysql -u root -proot maltalist < "$LATEST_BACKUP"; then
+            echo "✓ Backup restored successfully"
+        else
+            echo "⚠ Warning: Backup restore had issues, but database is initialized"
+        fi
     else
         echo "⚠ No backup found in $BACKUP_PATH - using initialized schema only"
     fi

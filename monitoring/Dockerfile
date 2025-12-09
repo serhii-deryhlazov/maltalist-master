@@ -9,6 +9,11 @@ COPY web /var/www/html
 COPY scripts/monitor.sh /monitor.sh
 COPY scripts/start.sh /start.sh
 
+# Create stats directory and set permissions
+RUN mkdir -p /var/www/html/stats && \
+    chmod -R 755 /var/www/html && \
+    chmod 777 /var/www/html/stats
+
 # Create nginx config with PHP support
 RUN echo 'server { \
     listen 80; \
@@ -22,6 +27,11 @@ RUN echo 'server { \
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name; \
     } \
 }' > /etc/nginx/http.d/default.conf
+
+# Create PHP-FPM config to pass environment variables
+RUN mkdir -p /etc/php81/php-fpm.d && \
+    echo '[www] \
+env[MYSQL_PASSWORD] = $MYSQL_PASSWORD' > /etc/php81/php-fpm.d/env.conf
 
 RUN chmod +x /monitor.sh /start.sh
 
