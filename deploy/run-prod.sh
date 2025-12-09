@@ -1,26 +1,24 @@
 #!/bin/bash
 
 # Production deployment script - runs on the server
-# Usage: ./run-prod.sh --api --ui --monitoring
-#        ./run-prod.sh --all
+# Usage: ./run-prod.sh api
+#        ./run-prod.sh ui
+#        ./run-prod.sh db
+#        ./run-prod.sh monitoring
 
 DOCKER_PATH="/var/www/docker"
+BACKUP_PATH="$DOCKER_PATH/files/backups"
 cd $DOCKER_PATH
 
-# Parse flags
-DEPLOY_API=false
-DEPLOY_UI=false
-DEPLOY_MONITORING=false
-
 show_usage() {
-    echo "Usage: $0 [OPTIONS]"
+    echo "Usage: $0 <MODULE>"
     echo ""
-    echo "Options:"
-    echo "  --api          Deploy API service"
-    echo "  --ui           Deploy UI service"
-    echo "  --monitoring   Deploy monitoring service"
-    echo "  --all          Deploy all services"
-    echo "  -h, --help     Show this help message"
+    echo "Modules:"
+    echo "  api          Deploy API service"
+    echo "  ui           Deploy UI service"
+    echo "  db           Deploy database and restore latest backup"
+    echo "  monitoring   Deploy monitoring service"
+    echo "  -h, --help   Show this help message"
 }
 
 if [ $# -eq 0 ]; then
@@ -28,85 +26,82 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --api)
-            DEPLOY_API=true
-            shift
-            ;;
-        --ui)
-            DEPLOY_UI=true
-            shift
-            ;;
-        --monitoring)
-            DEPLOY_MONITORING=true
-            shift
-            ;;
-        --all)
-            DEPLOY_API=true
-            DEPLOY_UI=true
-            DEPLOY_MONITORING=true
-            shift
-            ;;
-        -h|--help)
-            show_usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            show_usage
-            exit 1
-            ;;
-    esac
-done
+MODULE="$1"
 
-echo "=== Deployment Configuration ==="
-echo "API: $DEPLOY_API"
-echo "UI: $DEPLOY_UI"
-echo "Monitoring: $DEPLOY_MONITORING"
+case $MODULE in
+    api|ui|db|monitoring)
+        ;;
+    -h|--help)
+        show_usage
+        exit 0
+        ;;
+    *)
+        echo "Error: Unknown module '$MODULE'"
+        show_usage
+        exit 1
+        ;;
+esac
+
+echo "=== Production Deployment ==="
+echo "Module: $MODULE"
 echo "================================"
 
-# Load Docker images
+# Load Docker image if not database deployment
+if [ "$MODULE" != "db" ]; then
+    echo ""
+    echo "Loading Docker image..."
+    if [ -f maltalist-$MODULE.tar ]; then
+        echo "Loading maltalist-$MODULE.tar..."
+        docker load < maltalist-$MODULE.tar
+        rm -f maltalist-$MODULE.tar
+    fi
+fi
+
+# Deploy based on module
 echo ""
-echo "Loading Docker images..."
-if [ "$DEPLOY_API" = true ] && [ -f maltalist-api.tar ]; then
-    echo "Loading maltalist-api.tar..."
-    docker load < maltalist-api.tar
-    rm -f maltalist-api.tar
-fi
+echo "Deploying $MODULE service..."
 
-if [ "$DEPLOY_UI" = true ] && [ -f maltalist-ui.tar ]; then
-    echo "Loading maltalist-ui.tar..."
-    docker load < maltalist-ui.tar
-    rm -f maltalist-ui.tar
-fi
-
-if [ "$DEPLOY_MONITORING" = true ] && [ -f maltalist-monitoring.tar ]; then
-    echo "Loading maltalist-monitoring.tar..."
-    docker load < maltalist-monitoring.tar
-    rm -f maltalist-monitoring.tar
-fi
-
-# Gracefully restart selected services
-echo ""
-echo "Restarting services..."
-
-if [ "$DEPLOY_API" = true ]; then
+if [ "$MODULE" = "api" ]; then
     echo "Restarting API service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate api
     
     echo "Initializing database..."
     docker-compose -f docker-compose.prod.yml exec -T db /docker-entrypoint-initdb.d/init-db.sh --prod
-fi
 
-if [ "$DEPLOY_UI" = true ]; then
+elif [ "$MODULE" = "ui" ]; then
     echo "Restarting UI service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate ui
-fi
 
-if [ "$DEPLOY_MONITORING" = true ]; then
+elif [ "$MODULE" = "db" ]; then
+    echo "Restarting database service..."
+    docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate db
+    
+    # Wait for DB to be ready
+    echo "Waiting for database to be ready..."
+    sleep 5
+    
+    # Initialize database schema
+    echo "Initializing database schema..."
+    docker-compose -f docker-compose.prod.yml exec -T db bash /docker-entrypoint-initdb.d/init-db.sh --prod
+    
+    # Find and restore latest backup
+    echo ""
+    echo "Looking for latest backup..."
+    LATEST_BACKUP=$(ls -1 $BACKUP_PATH/maltalist_*.sql 2>/dev/null | sort | tail -n 1)
+    
+    if [ -n "$LATEST_BACKUP" ] && [ -f "$LATEST_BACKUP" ]; then
+        echo "Found backup: $(basename $LATEST_BACKUP)"
+        echo "Restoring database from backup..."
+        docker-compose -f docker-compose.prod.yml exec -T db mysql -u root -p${MYSQL_ROOT_PASSWORD} maltalist < "$LATEST_BACKUP"
+        echo "✓ Backup restored successfully"
+    else
+        echo "⚠ No backup found in $BACKUP_PATH - using initialized schema only"
+    fi
+
+elif [ "$MODULE" = "monitoring" ]; then
     echo "Restarting Monitoring service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate monitoring
+
 fi
 
 # Clean up old images

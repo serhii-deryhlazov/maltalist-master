@@ -90,7 +90,7 @@
     <?php
     $servername = "db";
     $username = "maltalist_user";
-    $password = getenv('MYSQL_PASSWORD') ?: "M@LtApass_Secure_2025!";
+    $password = getenv('MYSQL_PASSWORD') ?: "M@LtApass";
     $dbname = "maltalist";
 
     // Create connection

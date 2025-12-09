@@ -7,9 +7,18 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Parse command line arguments
+SKIP_E2E=false
+if [[ "$1" == "--no-e2e" ]]; then
+    SKIP_E2E=true
+fi
+
 echo -e "${BLUE}======================================================================"
 echo "           Maltalist Full Test Suite Runner"
 echo "======================================================================${NC}"
+if [[ "$SKIP_E2E" == true ]]; then
+    echo -e "${YELLOW}Running WITHOUT E2E tests (--no-e2e flag)${NC}"
+fi
 echo ""
 
 # Track overall results
@@ -45,15 +54,20 @@ fi
 cd ..
 
 # Run E2E tests
-echo -e "${BLUE}[3/3] Running E2E Tests...${NC}"
-echo ""
-if ./run-e2e-tests.sh; then
-    echo -e "${GREEN}[SUCCESS] E2E tests passed! ✅${NC}"
+if [[ "$SKIP_E2E" == false ]]; then
+    echo -e "${BLUE}[3/3] Running E2E Tests...${NC}"
     echo ""
+    if ./run-e2e-tests.sh; then
+        echo -e "${GREEN}[SUCCESS] E2E tests passed! ✅${NC}"
+        echo ""
+    else
+        echo -e "${RED}[ERROR] E2E tests failed! ❌${NC}"
+        echo ""
+        TOTAL_FAILED=$((TOTAL_FAILED + 1))
+    fi
 else
-    echo -e "${RED}[ERROR] E2E tests failed! ❌${NC}"
+    echo -e "${YELLOW}⊘ E2E tests skipped (--no-e2e flag)${NC}"
     echo ""
-    TOTAL_FAILED=$((TOTAL_FAILED + 1))
 fi
 
 # Summary
