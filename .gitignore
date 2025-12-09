@@ -7,6 +7,7 @@ files/*
 .DS_Store
 seeder/bin
 seeder/obj
+*.tar
 
 # Security & Sensitive Files
 .env
