@@ -56,6 +56,17 @@ echo "================================"
 # Go to project root
 cd "$(dirname "$0")/.."
 
+# Basic validation
+if ! docker ps > /dev/null 2>&1; then
+    echo "❌ Docker is not running"
+    exit 1
+fi
+
+if ! command -v docker-compose &> /dev/null; then
+    echo "❌ docker-compose is not installed"
+    exit 1
+fi
+
 # Build and prepare deployment based on module
 if [ "$MODULE" != "db" ]; then
     echo ""
@@ -63,11 +74,41 @@ if [ "$MODULE" != "db" ]; then
     export DOCKER_DEFAULT_PLATFORM=linux/amd64
     
     docker-compose build $MODULE
+    BUILD_EXIT_CODE=$?
+    
+    if [ $BUILD_EXIT_CODE -ne 0 ]; then
+        echo "❌ BUILD FAILED: docker-compose build exited with code $BUILD_EXIT_CODE"
+        exit $BUILD_EXIT_CODE
+    fi
     
     echo "Saving maltalist-$MODULE image..."
     MODULE_IMAGE=$(docker images --format "{{.Repository}}" | grep $MODULE | head -1)
+    
+    if [ -z "$MODULE_IMAGE" ]; then
+        echo ""
+        echo "❌ ERROR: Could not find built image for $MODULE"
+        echo "Image search returned empty. Build may have failed silently."
+        exit 1
+    fi
+    
     docker tag $MODULE_IMAGE maltalist-$MODULE:latest
+    TAG_EXIT_CODE=$?
+    
+    if [ $TAG_EXIT_CODE -ne 0 ]; then
+        echo ""
+        echo "❌ ERROR: Failed to tag image with exit code $TAG_EXIT_CODE"
+        exit $TAG_EXIT_CODE
+    fi
+    
     docker save maltalist-$MODULE:latest > maltalist-$MODULE.tar
+    SAVE_EXIT_CODE=$?
+    
+    if [ $SAVE_EXIT_CODE -ne 0 ]; then
+        echo ""
+        echo "❌ ERROR: Failed to save image with exit code $SAVE_EXIT_CODE"
+        rm -f maltalist-$MODULE.tar
+        exit $SAVE_EXIT_CODE
+    fi
 else
     echo ""
     echo "Database deployment - no image build needed"
@@ -77,19 +118,45 @@ fi
 echo ""
 echo "Ensuring directories exist on server..."
 ssh $SERVER_USER@$SERVER_IP "mkdir -p $DOCKER_PATH $DOCKER_PATH/files/backups $DOCKER_PATH/files/images $DOCKER_PATH/maltalist-api $DOCKER_PATH/maltalist-angular"
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Failed to create directories on server"
+    exit 1
+fi
 
 # Transfer tar file if not database deployment
 echo ""
 echo "Transferring files to server..."
 if [ "$MODULE" != "db" ]; then
+    if [ ! -f "maltalist-$MODULE.tar" ]; then
+        echo "❌ ERROR: maltalist-$MODULE.tar not found"
+        exit 1
+    fi
     echo "Uploading maltalist-$MODULE.tar..."
     scp maltalist-$MODULE.tar $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Failed to upload maltalist-$MODULE.tar"
+        exit 1
+    fi
 fi
 
 # Transfer config files
 scp docker-compose.prod.yml $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Failed to upload docker-compose.prod.yml"
+    exit 1
+fi
+
 scp deploy/run-prod.sh $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Failed to upload run-prod.sh"
+    exit 1
+fi
+
 ssh $SERVER_USER@$SERVER_IP "chmod +x $DOCKER_PATH/run-prod.sh"
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Failed to set permissions on run-prod.sh"
+    exit 1
+fi
 
 # Transfer supporting files based on module
 if [ "$MODULE" = "api" ]; then
@@ -105,13 +172,25 @@ fi
 echo ""
 echo "Cleaning up local tar files..."
 if [ "$MODULE" != "db" ]; then
-    rm -f maltalist-$MODULE.tar
+    if [ -f "maltalist-$MODULE.tar" ]; then
+        rm -f maltalist-$MODULE.tar
+        if [ $? -ne 0 ]; then
+            echo "⚠️  WARNING: Failed to clean up maltalist-$MODULE.tar"
+        fi
+    fi
 fi
 
 # Run deployment on server
 echo ""
 echo "Running deployment on server..."
 ssh $SERVER_USER@$SERVER_IP "cd $DOCKER_PATH && ./run-prod.sh $MODULE"
+DEPLOYMENT_EXIT_CODE=$?
+
+if [ $DEPLOYMENT_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "❌ ERROR: Deployment on server failed with exit code $DEPLOYMENT_EXIT_CODE"
+    exit $DEPLOYMENT_EXIT_CODE
+fi
 
 echo ""
-echo "=== Deployment completed! ==="
+echo "✅ Deployment completed successfully!"

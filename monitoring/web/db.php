@@ -96,12 +96,27 @@
     }
     $dbname = "maltalist";
 
-    // Create connection
-    $conn = new mysqli($servername, $username, $password, $dbname);
+    // Create connection with retry logic
+    $conn = null;
+    $retries = 30;
+    $retry_delay = 1;
+    
+    while ($retries > 0 && $conn === null) {
+        $conn = new mysqli($servername, $username, $password, $dbname);
+        
+        if ($conn->connect_error) {
+            $retries--;
+            if ($retries === 0) {
+                die("Connection failed after retries: " . $conn->connect_error);
+            }
+            sleep($retry_delay);
+            $conn = null;
+        }
+    }
 
-    // Check connection
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
+    // Double check connection
+    if ($conn === null || $conn->connect_error) {
+        die("Connection failed: Unable to connect to database");
     }
 
     // Handle approve action

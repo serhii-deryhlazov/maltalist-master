@@ -53,7 +53,14 @@ if [ "$MODULE" != "db" ]; then
     if [ -f maltalist-$MODULE.tar ]; then
         echo "Loading maltalist-$MODULE.tar..."
         docker load < maltalist-$MODULE.tar
+        LOAD_EXIT_CODE=$?
+        if [ $LOAD_EXIT_CODE -ne 0 ]; then
+            echo "❌ ERROR: Failed to load Docker image with exit code $LOAD_EXIT_CODE"
+            exit $LOAD_EXIT_CODE
+        fi
         rm -f maltalist-$MODULE.tar
+    else
+        echo "⚠️  WARNING: maltalist-$MODULE.tar not found - using existing image"
     fi
 fi
 
@@ -64,17 +71,35 @@ echo "Deploying $MODULE service..."
 if [ "$MODULE" = "api" ]; then
     echo "Restarting API service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate api
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Failed to start API service"
+        docker-compose -f docker-compose.prod.yml logs --tail=20 api
+        exit 1
+    fi
     
     echo "Initializing database..."
     docker-compose -f docker-compose.prod.yml exec -T db /docker-entrypoint-initdb.d/init-db.sh --prod
+    if [ $? -ne 0 ]; then
+        echo "⚠️  WARNING: Database initialization may have failed (this is OK if schema already exists)"
+    fi
 
 elif [ "$MODULE" = "ui" ]; then
     echo "Restarting UI service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate ui
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Failed to start UI service"
+        docker-compose -f docker-compose.prod.yml logs --tail=20 ui
+        exit 1
+    fi
 
 elif [ "$MODULE" = "db" ]; then
     echo "Restarting database service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate db
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Failed to start database service"
+        docker-compose -f docker-compose.prod.yml logs --tail=20 db
+        exit 1
+    fi
     
     # Wait for DB to be ready
     echo "Waiting for database to be ready..."
@@ -126,6 +151,11 @@ elif [ "$MODULE" = "db" ]; then
 elif [ "$MODULE" = "monitoring" ]; then
     echo "Restarting Monitoring service..."
     docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate monitoring
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Failed to start monitoring service"
+        docker-compose -f docker-compose.prod.yml logs --tail=20 monitoring
+        exit 1
+    fi
 
 fi
 
@@ -135,6 +165,6 @@ echo "Cleaning up dangling images..."
 docker image prune -f
 
 echo ""
-echo "=== Deployment completed successfully! ==="
+echo "✅ === Deployment completed successfully! ==="
 echo ""
 docker ps

@@ -1,7 +1,7 @@
 FROM alpine:3.18
 
-# Install minimal packages including PHP
-RUN apk add --no-cache docker-cli jq nginx bash php81 php81-fpm php81-mysqli php81-json
+# Install minimal packages including PHP and mysql-client for health checks
+RUN apk add --no-cache docker-cli jq nginx bash php81 php81-fpm php81-mysqli php81-json mysql-client
 
 # Setup nginx and PHP-FPM
 RUN mkdir -p /var/www/html /var/log/nginx /var/lib/nginx/tmp
