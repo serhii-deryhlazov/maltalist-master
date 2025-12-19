@@ -7,10 +7,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Complex_Root_Pass_2025!}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: maltalist
       MYSQL_USER: maltalist_user
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-M@LtApass_Secure_2025!}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - ./files/backups:/backups
       - ./files/backups/backup.sh:/backup.sh
@@ -42,7 +42,10 @@ services:
         condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=${MYSQL_PASSWORD:-M@LtApass_Secure_2025!};
+      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=${MYSQL_PASSWORD};
+      - Stripe__SecretKey=${STRIPE_SECRET_KEY}
+      - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+      - Google__ClientId=${GOOGLE_CLIENT_ID}
     deploy:
       resources:
         limits:
@@ -58,6 +61,9 @@ services:
     build:
       context: ./maltalist-angular
       dockerfile: Dockerfile
+      args:
+        - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+        - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
     ports:
       - "80:80"
       - "443:443"
@@ -83,7 +89,7 @@ services:
     ports:
       - "8080:80"
     environment:
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-M@LtApass_Secure_2025!}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./files/stats:/var/www/html/stats

@@ -7,10 +7,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: maltalist
       MYSQL_USER: maltalist_user
-      MYSQL_PASSWORD: M@LtApass
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       ENVIRONMENT: production
     volumes:
       - ./files/backups:/backups
@@ -41,7 +41,10 @@ services:
         condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=M@LtApass;SslMode=None;
+      - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=${MYSQL_PASSWORD};SslMode=None;
+      - Stripe__SecretKey=${STRIPE_SECRET_KEY}
+      - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+      - Google__ClientId=${GOOGLE_CLIENT_ID}
     deploy:
       resources:
         limits:
@@ -78,7 +81,7 @@ services:
     ports:
       - "8181:80"
     environment:
-      - MYSQL_PASSWORD=M@LtApass
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_HOST=db
       - MYSQL_USER=maltalist_user
       - MYSQL_DB=maltalist

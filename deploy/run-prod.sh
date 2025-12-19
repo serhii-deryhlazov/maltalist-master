@@ -8,7 +8,15 @@
 
 DOCKER_PATH="/var/www/docker"
 BACKUP_PATH="$DOCKER_PATH/files/backups"
+DOCKER_COMPOSE_CMD="docker-compose --env-file prod.env -f docker-compose.prod.yml"
 cd $DOCKER_PATH
+
+# Check if prod.env exists
+if [ ! -f "prod.env" ]; then
+    echo "ERROR: prod.env file not found!"
+    echo "Please create prod.env file with production environment variables."
+    exit 1
+fi
 
 show_usage() {
     echo "Usage: $0 <MODULE>"
@@ -70,34 +78,34 @@ echo "Deploying $MODULE service..."
 
 if [ "$MODULE" = "api" ]; then
     echo "Restarting API service..."
-    docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate api
+    $DOCKER_COMPOSE_CMD up -d --no-deps --force-recreate api
     if [ $? -ne 0 ]; then
         echo "❌ ERROR: Failed to start API service"
-        docker-compose -f docker-compose.prod.yml logs --tail=20 api
+        $DOCKER_COMPOSE_CMD logs --tail=20 api
         exit 1
     fi
     
     echo "Initializing database..."
-    docker-compose -f docker-compose.prod.yml exec -T db /docker-entrypoint-initdb.d/init-db.sh --prod
+    $DOCKER_COMPOSE_CMD exec -T db /docker-entrypoint-initdb.d/init-db.sh --prod
     if [ $? -ne 0 ]; then
         echo "⚠️  WARNING: Database initialization may have failed (this is OK if schema already exists)"
     fi
 
 elif [ "$MODULE" = "ui" ]; then
     echo "Restarting UI service..."
-    docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate ui
+    $DOCKER_COMPOSE_CMD up -d --no-deps --force-recreate ui
     if [ $? -ne 0 ]; then
         echo "❌ ERROR: Failed to start UI service"
-        docker-compose -f docker-compose.prod.yml logs --tail=20 ui
+        $DOCKER_COMPOSE_CMD logs --tail=20 ui
         exit 1
     fi
 
 elif [ "$MODULE" = "db" ]; then
     echo "Restarting database service..."
-    docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate db
+    $DOCKER_COMPOSE_CMD up -d --no-deps --force-recreate db
     if [ $? -ne 0 ]; then
         echo "❌ ERROR: Failed to start database service"
-        docker-compose -f docker-compose.prod.yml logs --tail=20 db
+        $DOCKER_COMPOSE_CMD logs --tail=20 db
         exit 1
     fi
     
@@ -106,7 +114,7 @@ elif [ "$MODULE" = "db" ]; then
     max_attempts=30
     attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if docker-compose -f docker-compose.prod.yml exec -T db mysqladmin ping -u root -proot >/dev/null 2>&1; then
+        if $DOCKER_COMPOSE_CMD exec -T db mysqladmin ping -u root -proot >/dev/null 2>&1; then
             echo "✓ Database is ready!"
             break
         fi
@@ -117,17 +125,17 @@ elif [ "$MODULE" = "db" ]; then
     
     if [ $attempt -eq $max_attempts ]; then
         echo "❌ Error: Database failed to start properly"
-        docker-compose -f docker-compose.prod.yml logs --tail=50 db
+        $DOCKER_COMPOSE_CMD logs --tail=50 db
         exit 1
     fi
     
     # Initialize database schema
     echo "Initializing database schema..."
-    if docker-compose -f docker-compose.prod.yml exec -T db bash /docker-entrypoint-initdb.d/init-db.sh --prod; then
+    if $DOCKER_COMPOSE_CMD exec -T db bash /docker-entrypoint-initdb.d/init-db.sh --prod; then
         echo "✓ Database schema initialized successfully"
     else
         echo "❌ Error: Database initialization failed"
-        docker-compose -f docker-compose.prod.yml logs --tail=50 db
+        $DOCKER_COMPOSE_CMD logs --tail=50 db
         exit 1
     fi
     
@@ -139,7 +147,7 @@ elif [ "$MODULE" = "db" ]; then
     if [ -n "$LATEST_BACKUP" ] && [ -f "$LATEST_BACKUP" ]; then
         echo "Found backup: $(basename $LATEST_BACKUP)"
         echo "Restoring database from backup..."
-        if docker-compose -f docker-compose.prod.yml exec -T db mysql -u root -proot maltalist < "$LATEST_BACKUP"; then
+        if $DOCKER_COMPOSE_CMD exec -T db mysql -u root -proot maltalist < "$LATEST_BACKUP"; then
             echo "✓ Backup restored successfully"
         else
             echo "⚠ Warning: Backup restore had issues, but database is initialized"
@@ -150,10 +158,10 @@ elif [ "$MODULE" = "db" ]; then
 
 elif [ "$MODULE" = "monitoring" ]; then
     echo "Restarting Monitoring service..."
-    docker-compose -f docker-compose.prod.yml up -d --no-deps --force-recreate monitoring
+    $DOCKER_COMPOSE_CMD up -d --no-deps --force-recreate monitoring
     if [ $? -ne 0 ]; then
         echo "❌ ERROR: Failed to start monitoring service"
-        docker-compose -f docker-compose.prod.yml logs --tail=20 monitoring
+        $DOCKER_COMPOSE_CMD logs --tail=20 monitoring
         exit 1
     fi
 

@@ -13,6 +13,8 @@ seeder/obj
 .env
 .env.local
 .env.*.local
+dev.env
+prod.env
 *.key
 *.pem
 *.crt
