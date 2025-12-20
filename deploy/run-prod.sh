@@ -18,6 +18,11 @@ if [ ! -f "prod.env" ]; then
     exit 1
 fi
 
+# Load environment variables from prod.env
+set -a  # Automatically export all variables
+source prod.env
+set +a
+
 show_usage() {
     echo "Usage: $0 <MODULE>"
     echo ""
@@ -109,12 +114,13 @@ elif [ "$MODULE" = "db" ]; then
         exit 1
     fi
     
-    # Wait for DB to be ready
-    echo "Waiting for database to be ready..."
-    max_attempts=30
+    # Wait for DB to be ready (longer wait for first-time initialization)
+    echo "Waiting for database initialization and startup..."
+    echo "(This may take 30-60 seconds on first run)"
+    max_attempts=60
     attempt=0
     while [ $attempt -lt $max_attempts ]; do
-        if $DOCKER_COMPOSE_CMD exec -T db mysqladmin ping -u root -proot >/dev/null 2>&1; then
+        if $DOCKER_COMPOSE_CMD exec -T db mysqladmin ping -h localhost >/dev/null 2>&1; then
             echo "✓ Database is ready!"
             break
         fi
@@ -129,15 +135,9 @@ elif [ "$MODULE" = "db" ]; then
         exit 1
     fi
     
-    # Initialize database schema
-    echo "Initializing database schema..."
-    if $DOCKER_COMPOSE_CMD exec -T db bash /docker-entrypoint-initdb.d/init-db.sh --prod; then
-        echo "✓ Database schema initialized successfully"
-    else
-        echo "❌ Error: Database initialization failed"
-        $DOCKER_COMPOSE_CMD logs --tail=50 db
-        exit 1
-    fi
+    # The init-db.sh script runs automatically via docker-entrypoint-initdb.d during first startup
+    echo "✓ Database initialized successfully"
+    echo "(Schema and users were created by entrypoint script)"
     
     # Find and restore latest backup
     echo ""

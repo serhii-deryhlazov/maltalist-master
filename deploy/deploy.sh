@@ -56,6 +56,16 @@ echo "================================"
 # Go to project root
 cd "$(dirname "$0")/.."
 
+# Load production environment variables
+if [ -f "prod.env" ]; then
+    echo "Loading environment variables from prod.env..."
+    set -a  # Automatically export all variables
+    source prod.env
+    set +a
+else
+    echo "⚠️  Warning: prod.env file not found"
+fi
+
 # Basic validation
 if ! docker ps > /dev/null 2>&1; then
     echo "❌ Docker is not running"
@@ -143,6 +153,12 @@ fi
 scp docker-compose.prod.yml $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
 if [ $? -ne 0 ]; then
     echo "❌ ERROR: Failed to upload docker-compose.prod.yml"
+    exit 1
+fi
+
+scp prod.env $SERVER_USER@$SERVER_IP:$DOCKER_PATH/
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: Failed to upload prod.env"
     exit 1
 fi
 
