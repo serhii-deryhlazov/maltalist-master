@@ -5,8 +5,18 @@
 
 set -e  # Exit on any error
 
+# Record start time
+START_TIME=$(date +%s)
+
 echo "🚀 Starting E2E Test Suite..."
 echo ""
+
+# Check if dev.env exists
+if [ ! -f "dev.env" ]; then
+  echo "❌ Error: dev.env file not found!"
+  echo "Please create dev.env file with required environment variables."
+  exit 1
+fi
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
@@ -15,7 +25,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Check if containers are already running
-if docker compose ps | grep -q "Up"; then
+if docker compose --env-file dev.env ps | grep -q "Up"; then
   echo "ℹ️  Docker containers are already running"
   CONTAINERS_WERE_RUNNING=true
 else
@@ -25,8 +35,8 @@ else
   # Create override file (same as run-dev.sh)
   echo "services: { api: { ports: [] }, db: { ports: [] }, ui: { ports: [\"80:80\", \"443:443\"] } }" > docker-compose.override.yml
   
-  # Start containers in detached mode
-  docker compose up -d
+  # Start containers in detached mode with dev.env
+  docker compose --env-file dev.env up -d
   
   # Wait for services to be healthy
   echo "⏳ Waiting for services to be ready..."
@@ -125,6 +135,13 @@ else
   echo "ℹ️  Leaving Docker containers running (they were already running before)"
 fi
 
+# Calculate and display execution time
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+MINUTES=$((DURATION / 60))
+SECONDS=$((DURATION % 60))
+
 echo ""
 echo "📊 Test run finished!"
+echo "⏱️  Total time: ${MINUTES}m ${SECONDS}s"
 exit $TEST_EXIT_CODE

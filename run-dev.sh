@@ -15,6 +15,8 @@ cleanup() {
   docker rm -f $(docker ps -a -q) 2>/dev/null || true
   echo "Removing all volumes..."
   docker volume rm $(docker volume ls -q) 2>/dev/null || true
+  
+  docker system prune -a --volumes -f
 }
 
 cleanup
