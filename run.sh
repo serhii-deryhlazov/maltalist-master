@@ -60,6 +60,8 @@ ensure_test_users() {
 
 case $service in
   db)
+    echo "🧹 Cleaning up Docker system..."
+    docker system prune -a --volumes -f
     echo "🔄 Rebuilding and restarting $service..."
     docker-compose --env-file dev.env build $service
     docker-compose --env-file dev.env up -d --force-recreate $service
@@ -72,6 +74,8 @@ case $service in
     echo "✅ API restarted!"
     ;;
   api|ui|monitoring)
+    echo "🧹 Cleaning up Docker system..."
+    docker system prune -a --volumes -f
     echo "🔄 Rebuilding and restarting $service..."
     docker-compose --env-file dev.env build $service
     docker-compose --env-file dev.env up -d --force-recreate $service

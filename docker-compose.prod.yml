@@ -44,7 +44,10 @@ services:
       - ConnectionStrings__DefaultConnection=Server=db;Database=maltalist;User=maltalist_user;Password=${MYSQL_PASSWORD};SslMode=None;
       - Stripe__SecretKey=${STRIPE_SECRET_KEY}
       - Stripe__PublishableKey=${STRIPE_PUBLISHABLE_KEY}
+      - Stripe__PriceIds__Week=${STRIPE_PRICE_ID_WEEK}
+      - Stripe__PriceIds__Month=${STRIPE_PRICE_ID_MONTH}
       - Google__ClientId=${GOOGLE_CLIENT_ID}
+      - FrontendUrl=${FRONTEND_URL}
     deploy:
       resources:
         limits:
