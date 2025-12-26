@@ -160,8 +160,19 @@
     $result = $conn->query($sql);
     $unapprovedListings = $result->fetch_assoc()['total'];
 
+    // Active promotions
+    $sql = "SELECT COUNT(*) as total FROM Promotions WHERE ExpirationDate > NOW()";
+    $result = $conn->query($sql);
+    $activePromotions = $result->fetch_assoc()['total'];
+
+    // Expired promotions
+    $sql = "SELECT COUNT(*) as total FROM Promotions WHERE ExpirationDate <= NOW()";
+    $result = $conn->query($sql);
+    $expiredPromotions = $result->fetch_assoc()['total'];
+
     // Get listings based on view
     $listings = [];
+    $promotions = [];
     $totalCount = 0;
 
     if ($view === 'unapproved') {
@@ -194,6 +205,27 @@
         $result = $stmt->get_result();
         while($row = $result->fetch_assoc()) {
             $listings[] = $row;
+        }
+        $stmt->close();
+    } elseif ($view === 'promotions') {
+        // Count all promotions
+        $sql = "SELECT COUNT(*) as total FROM Promotions";
+        $result = $conn->query($sql);
+        $totalCount = $result->fetch_assoc()['total'];
+
+        // Get all promotions with listing details
+        $sql = "SELECT p.Id, p.ListingId, p.ExpirationDate, p.Category, l.Title, 
+                       CASE WHEN p.ExpirationDate > NOW() THEN 'Active' ELSE 'Expired' END as Status
+                FROM Promotions p
+                LEFT JOIN Listings l ON p.ListingId = l.Id
+                ORDER BY p.ExpirationDate DESC 
+                LIMIT ? OFFSET ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ii", $perPage, $offset);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while($row = $result->fetch_assoc()) {
+            $promotions[] = $row;
         }
         $stmt->close();
     } else { // all
@@ -234,6 +266,14 @@
             <strong><?php echo $unapprovedListings; ?></strong>
             <span>Unapproved</span>
         </div>
+        <div class="stat-box">
+            <strong><?php echo $activePromotions; ?></strong>
+            <span>Active Promotions</span>
+        </div>
+        <div class="stat-box">
+            <strong><?php echo $expiredPromotions; ?></strong>
+            <span>Expired Promotions</span>
+        </div>
     </div>
 
     <div class="tabs">
@@ -243,12 +283,71 @@
         <a href="?view=today&page=1" class="tab <?php echo $view === 'today' ? 'active' : ''; ?>">
             Today's Listings
         </a>
+        <a href="?view=promotions&page=1" class="tab <?php echo $view === 'promotions' ? 'active' : ''; ?>">
+            Promotions (<?php echo $activePromotions + $expiredPromotions; ?>)
+        </a>
         <a href="?view=all&page=1" class="tab <?php echo $view === 'all' ? 'active' : ''; ?>">
             All Listings
         </a>
     </div>
 
-    <?php if (count($listings) > 0): ?>
+    <?php if ($view === 'promotions' && count($promotions) > 0): ?>
+        <div class="pagination">
+            <?php if ($page > 1): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page - 1; ?>">« Previous</a>
+            <?php endif; ?>
+            
+            <span>Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+            <span>(<?php echo $totalCount; ?> total)</span>
+            
+            <?php if ($page < $totalPages): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page + 1; ?>">Next »</a>
+            <?php endif; ?>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Promotion ID</th>
+                    <th>Listing ID</th>
+                    <th>Listing Title</th>
+                    <th>Category</th>
+                    <th>Expiration Date</th>
+                    <th>Status</th>
+                    <th>Link</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($promotions as $promo): ?>
+                    <tr style="<?php echo $promo['Status'] === 'Expired' ? 'opacity: 0.6;' : ''; ?>">
+                        <td><?php echo $promo['Id']; ?></td>
+                        <td><?php echo $promo['ListingId']; ?></td>
+                        <td><?php echo htmlspecialchars($promo['Title'] ?? 'N/A'); ?></td>
+                        <td><?php echo htmlspecialchars($promo['Category']); ?></td>
+                        <td><?php echo date('Y-m-d H:i:s', strtotime($promo['ExpirationDate'])); ?></td>
+                        <td>
+                            <span style="color: <?php echo $promo['Status'] === 'Active' ? 'green' : 'red'; ?>; font-weight: bold;">
+                                <?php echo $promo['Status']; ?>
+                            </span>
+                        </td>
+                        <td><a href="http://localhost/listing/<?php echo $promo['ListingId']; ?>" target="_blank">View Listing</a></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            <?php if ($page > 1): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page - 1; ?>">« Previous</a>
+            <?php endif; ?>
+            
+            <span>Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+            
+            <?php if ($page < $totalPages): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page + 1; ?>">Next »</a>
+            <?php endif; ?>
+        </div>
+    <?php elseif (count($listings) > 0): ?>
         <div class="pagination">
             <?php if ($page > 1): ?>
                 <a href="?view=<?php echo $view; ?>&page=<?php echo $page - 1; ?>">« Previous</a>
