@@ -9,13 +9,11 @@ if [ ! -f "dev.env" ]; then
 fi
 
 cleanup() {
-  echo "Force killing all containers..."
-  docker kill $(docker ps -q) 2>/dev/null || true
+  echo "Stopping and removing containers and volumes..."
+  docker-compose --env-file dev.env down -v 2>/dev/null || true
   echo "Force removing all containers..."
   docker rm -f $(docker ps -a -q) 2>/dev/null || true
-  echo "Removing all volumes..."
-  docker volume rm $(docker volume ls -q) 2>/dev/null || true
-  
+  echo "Pruning system..."
   docker system prune -a --volumes -f
 }
 
