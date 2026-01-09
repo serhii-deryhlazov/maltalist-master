@@ -1,15 +1,15 @@
 <?php
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'prune') {
-    header('Content-Type: application/json');
-    $file = 'stats/stats.json';
-    if (file_put_contents($file, '[]') !== false) {
-        echo json_encode(['success' => true, 'message' => 'Stats pruned successfully']);
-    } else {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Failed to prune stats']);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'prune') {
+        header('Content-Type: application/json');
+        $file = 'stats/stats.json';
+        if (file_put_contents($file, '[]') !== false) {
+            echo json_encode(['success' => true, 'message' => 'Stats pruned successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Failed to prune stats']);
+        }
+        exit;
     }
-    exit;
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

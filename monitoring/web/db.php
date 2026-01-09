@@ -134,6 +134,21 @@
         exit();
     }
 
+    // Handle activate user action
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['activate_user'])) {
+        $userId = $_POST['user_id']; // Keep as string for UUID
+        $activeValue = isset($_POST['active']) ? 1 : 0;
+        
+        $stmt = $conn->prepare("UPDATE Users SET IsActive = ? WHERE Id = ?");
+        $stmt->bind_param("is", $activeValue, $userId);
+        $stmt->execute();
+        $stmt->close();
+        
+        // Redirect to refresh the page
+        header("Location: " . $_SERVER['PHP_SELF'] . "?view=" . ($_GET['view'] ?? 'unapproved') . "&page=" . ($_GET['page'] ?? 1));
+        exit();
+    }
+
     // Get current view and page
     $view = $_GET['view'] ?? 'unapproved';
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
@@ -173,9 +188,24 @@
     // Get listings based on view
     $listings = [];
     $promotions = [];
+    $users = [];
     $totalCount = 0;
 
-    if ($view === 'unapproved') {
+    if ($view === 'users') {
+        // Count total users
+        $totalCount = $totalUsers;
+
+        // Get all users
+        $sql = "SELECT Id, UserName, Email, IsActive, CreatedAt FROM Users ORDER BY CreatedAt DESC LIMIT ? OFFSET ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ii", $perPage, $offset);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while($row = $result->fetch_assoc()) {
+            $users[] = $row;
+        }
+        $stmt->close();
+    } elseif ($view === 'unapproved') {
         // Count total unapproved
         $sql = "SELECT COUNT(*) as total FROM Listings WHERE Approved = 0";
         $result = $conn->query($sql);
@@ -289,6 +319,9 @@
         <a href="?view=all&page=1" class="tab <?php echo $view === 'all' ? 'active' : ''; ?>">
             All Listings
         </a>
+        <a href="?view=users&page=1" class="tab <?php echo $view === 'users' ? 'active' : ''; ?>">
+            All Users (<?php echo $totalUsers; ?>)
+        </a>
     </div>
 
     <?php if ($view === 'promotions' && count($promotions) > 0): ?>
@@ -331,6 +364,64 @@
                             </span>
                         </td>
                         <td><a href="http://localhost/listing/<?php echo $promo['ListingId']; ?>" target="_blank">View Listing</a></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div class="pagination">
+            <?php if ($page > 1): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page - 1; ?>">« Previous</a>
+            <?php endif; ?>
+            
+            <span>Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+            
+            <?php if ($page < $totalPages): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page + 1; ?>">Next »</a>
+            <?php endif; ?>
+        </div>
+    <?php elseif ($view === 'users' && count($users) > 0): ?>
+        <div class="pagination">
+            <?php if ($page > 1): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page - 1; ?>">« Previous</a>
+            <?php endif; ?>
+            
+            <span>Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+            <span>(<?php echo $totalCount; ?> total)</span>
+            
+            <?php if ($page < $totalPages): ?>
+                <a href="?view=<?php echo $view; ?>&page=<?php echo $page + 1; ?>">Next »</a>
+            <?php endif; ?>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Created At</th>
+                    <th>Account Activated</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($users as $user): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($user['Id']); ?></td>
+                        <td><?php echo htmlspecialchars($user['UserName']); ?></td>
+                        <td><?php echo htmlspecialchars($user['Email']); ?></td>
+                        <td><?php echo date('Y-m-d H:i:s', strtotime($user['CreatedAt'])); ?></td>
+                        <td>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($user['Id']); ?>">
+                                <input type="hidden" name="activate_user" value="1">
+                                <input type="checkbox" 
+                                       name="active" 
+                                       value="1" 
+                                       <?php echo $user['IsActive'] ? 'checked' : ''; ?>
+                                       onchange="this.form.submit()">
+                            </form>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
