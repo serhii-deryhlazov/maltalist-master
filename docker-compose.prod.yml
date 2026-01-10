@@ -5,7 +5,7 @@ services:
     command: --default-authentication-plugin=mysql_native_password --innodb-buffer-pool-size=128M --innodb-log-file-size=32M --innodb-log-buffer-size=16M --innodb-ft-total-cache-size=64M --innodb-ft-cache-size=2M --max-connections=100
     restart: always
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: maltalist
@@ -83,7 +83,7 @@ services:
   monitoring:
     image: maltalist-monitoring:latest
     ports:
-      - "8181:80"
+      - "127.0.0.1:8182:80"
     environment:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_HOST=db
