@@ -21,7 +21,7 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            width: 100%;
+            padding: 15px;
         }
         #charts{
             columns: 2;
