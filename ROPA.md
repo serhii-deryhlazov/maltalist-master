@@ -5,7 +5,7 @@
 **VAT Number:** MT32290602  
 **Address:** Victoria, Racecourse street, Xagħra, Gozo, Malta  
 **Contact:** contact@maltalisting.com  
-**Last Updated:** 12 January 2026
+**Last Updated:** 18 January 2026
 
 ---
 
@@ -145,6 +145,7 @@ Users purchasing listing promotions
 - Payment verification via Stripe API
 - HTTPS for all payment-related requests
 - Transaction logging with tamper protection
+- **Consumer Rights Compliance:** Mandatory checkbox requiring users to acknowledge 14-day withdrawal right waiver before payment (promotion activates immediately upon purchase)
 
 ---
 
@@ -384,6 +385,8 @@ This document will be reviewed and updated:
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 1.0 | 12 Jan 2026 | Initial ROPA creation | Serhii Deryhlazov |
+| 1.1 | 18 Jan 2026 | Added consumer rights waiver checkbox for promotions | Serhii Deryhlazov |
+| 1.2 | 18 Jan 2026 | Added comprehensive prohibited content list to Terms of Service (DSA compliance) | Serhii Deryhlazov |
 
 ---
 

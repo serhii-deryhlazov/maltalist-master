@@ -70,7 +70,10 @@
         </tbody>
     </table>
 
-    <a href="db.php">Manage DB</a>
+    <div style="margin-top: 20px; display: flex; gap: 15px;">
+        <a href="db.php" style="padding: 10px 20px; background: #034d88; color: white; text-decoration: none; border-radius: 5px;">Manage DB</a>
+        <a href="reports.php" style="padding: 10px 20px; background: #dc3545; color: white; text-decoration: none; border-radius: 5px;">📋 Content Reports</a>
+    </div>
 
     <script>
         let currentData = [];
